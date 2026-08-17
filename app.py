@@ -7,7 +7,7 @@ import streamlit as st
 from rag import get_embeddings, get_llm, build_vectorstore_from_pdf, ask_rag
 
 
-st.set_page_config(page_title="PDF Q&A", page_icon="", layout="wide")
+st.set_page_config(page_title="AskMyPDF", page_icon="", layout="wide")
 
 # Make the Groq key available wherever it was supplied - Streamlit
 # Cloud's Secrets panel, or a local .streamlit/secrets.toml.
@@ -21,7 +21,7 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-st.title("📄 PDF Q&A")
+st.title("🗎 AskMyPDF")
 st.markdown(
     '<p class="subtitle">Upload a PDF and ask questions about it — answers are grounded only in that document.</p>',
     unsafe_allow_html=True,
