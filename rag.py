@@ -8,26 +8,15 @@ from langchain_chroma import Chroma
 from langchain_groq import ChatGroq
 
 
-# ---------------------------------------------------------------
 # Configuration
-# ---------------------------------------------------------------
 
-# A model name on the Hugging Face Hub (not a local path) so this
-# downloads automatically wherever the app runs, including on
-# Streamlit Cloud where a local D:\ path wouldn't exist.
 EMBEDDING_MODEL = "sentence-transformers/all-MiniLM-L6-v2"
-
-# openai/gpt-oss-20b is Groq's current recommended replacement for
-# the now-deprecated llama-3.1-8b-instant: fast, and on the free tier.
 GROQ_MODEL = "openai/gpt-oss-20b"
 
 CHUNK_SIZE = 1000
 CHUNK_OVERLAP = 200
 TOP_K = 6
 
-# Cosine distance (0 = identical, 2 = opposite). See the indexing
-# function below - collection_metadata forces cosine so this scale
-# stays predictable regardless of what PDF gets uploaded.
 SIMILARITY_THRESHOLD = 0.8
 
 FALLBACK_MESSAGE = (
@@ -35,14 +24,7 @@ FALLBACK_MESSAGE = (
 )
 
 
-# ---------------------------------------------------------------
-# Cached resources
-#
-# These are loaded once per app process and reused across every
-# visitor's session - they hold no per-user data, just the model
-# weights / API client, so sharing them is safe and avoids reloading
-# a ~90MB embedding model on every rerun.
-# ---------------------------------------------------------------
+# Cached Resources
 
 @st.cache_resource(show_spinner=False)
 def get_embeddings():
@@ -57,15 +39,7 @@ def get_llm():
     return ChatGroq(model=GROQ_MODEL, temperature=0)
 
 
-# ---------------------------------------------------------------
-# Indexing an uploaded PDF
-#
-# No persist_directory is passed to Chroma, so each vectorstore
-# lives only in memory for this process. Each session gets its own
-# collection_name (see app.py), so one visitor's PDF can never leak
-# into another visitor's answers even though the app process itself
-# is shared.
-# ---------------------------------------------------------------
+# PDF Indexing
 
 def build_vectorstore_from_pdf(pdf_path: str, embeddings, collection_name: str):
     documents = PyPDFLoader(pdf_path).load()
@@ -86,13 +60,7 @@ def build_vectorstore_from_pdf(pdf_path: str, embeddings, collection_name: str):
     return vectorstore, len(documents), len(chunks)
 
 
-# ---------------------------------------------------------------
-# Code policy
-#
-# Patterns are anchored to the whole line and require 2+ matches
-# before flagging an answer as code, so ordinary prose (e.g. "For
-# beginners in this topic...") doesn't get misclassified.
-# ---------------------------------------------------------------
+# Code Policy
 
 CODE_LINE_PATTERNS = [
     r"^\s*def\s+\w+\s*\([^)]*\)\s*:\s*$",
@@ -109,7 +77,7 @@ CODE_LINE_PATTERNS = [
     r"^\s*finally\s*:\s*$",
     r"^\s*return\s+.+$",
     r"^\s*print\s*\(.*\)\s*$",
-    r"^\s{4,}\S",  # indented line, characteristic of a code block
+    r"^\s{4,}\S",
 ]
 
 
@@ -157,9 +125,7 @@ def clean_answer(answer: str, question: str) -> str:
     return answer
 
 
-# ---------------------------------------------------------------
-# Prompt building
-# ---------------------------------------------------------------
+# Prompt Building
 
 def build_prompt(context: str, question: str) -> str:
     if user_requested_code(question):
@@ -213,9 +179,7 @@ ANSWER:
 """
 
 
-# ---------------------------------------------------------------
-# RAG pipeline
-# ---------------------------------------------------------------
+# RAG Pipeline
 
 def ask_rag(question: str, vectorstore, llm):
     results = vectorstore.similarity_search_with_score(question, k=TOP_K)
@@ -224,7 +188,9 @@ def ask_rag(question: str, vectorstore, llm):
         return FALLBACK_MESSAGE, []
 
     relevant_results = [
-        (document, score) for document, score in results if score <= SIMILARITY_THRESHOLD
+        (document, score)
+        for document, score in results
+        if score <= SIMILARITY_THRESHOLD
     ]
 
     if not relevant_results:
